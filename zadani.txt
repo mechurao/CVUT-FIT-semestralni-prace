@@ -1,0 +1,73 @@
+
+Název : Hra: Sandbox hra
+
+Originální zadání : Tato semestrální práce patří do kategorie her. Vaším cílem je vytvořit konkrétní hru, která bude modifikovatelná prostřednictvím konfiguračních souborů. Nesnažte se všechny hodnoty definovat přímo v kódu (a to ani pomocí konstant). Umístěte je do konfiguračních souborů (jednoho nebo více), které váš program bude načítat.
+                    Vaším úkolem je naprogramovat jednoduchou 2D sandbox hru. Sandboxové hry se vyznačují především možností upravovat existující prostředí.
+                    Hra musí splňovat následující funkcionality:
+
+                    - Implementujte hráče (př. postava, vesmírná loď, …), jeho stav (př. energie, životy, brnění, …) a umožněte interagovat s prostředím (př. těžit, kopat, stavět, …).
+                    - Vytvořte (soubojový) model zranění, který bude mít alespoň 3 různé příčiny (př. pád z výšky, souboj s nepřítelem, pobyt v lávě, …).
+                    - Vytvořte jednoduchý model prostředí, implementujte alespoň 3 různé mechaniky (př. gravitace, přelévání vody, růst stromů, …).
+                    - Hra musí být konfigurovatelná ze souboru:
+                        -mapa (nebo ještě lépe její generátor),
+                        -definice jednotlivých nepřátel, názvy předmětů či jejich atributy.
+                        - Hra musí umožnit uložit a následně načíst rozehranou hru.
+                    Kde lze využít polymorfismus? (doporučené)
+                    postavy: hráč, zvířata, přítel (obchodník), nepřítel (různé druhy),
+                    efekty akcí: pád (ubere životy podle kvadrátu výšky), úder (ubere životy podle síly a obrany), kontakt s lávou (aplikuje oheň a ubere vždy 1 život), …
+                    prostředí: vzduch (nic nedělá), voda (při použití s kbelíkem ho naplní nebo vyprázdní), hlína (hráč sebere a uloží do inventáře), uhlí a další rudy (pokud hráč drží krumpáč, tak se vytěží), žebřík (přesune hráče na konec), …
+                    uživatelské rozhraní: konzole, ncurses, SDL, OpenGL (různé varianty).
+
+Vlastní popis : Jako svou semestrální práci jsem se rozhodl vytvořit zjednodušenou 2D variantu populární hry Minecraft. Po vzoru předlohy jsou zpracovány následující koncepty :
+                - Získávání a výroba nových nástrojů/materiálů
+                - Inventář
+                - Zranění hráče (pád z výšky, otrava jídlem)
+                - Možnost doplnění zdraví
+                - Jednotlivé nástroje mají různé atributy (výdrž, poškození)
+                - Náhodné generování herního světa
+
+Další technické detaily :
+                - Vykresování světa a důležitých informací v terminálovém okně prostřednictvím knihovny NCurses.
+                - Nastavení hry je možné pomocí konfiguračních souborů.
+                - Ukládání a načítání hry ze souboru.
+                - Náročnější úkony (vykreslování, různé časovače a další ) jsou rozděleny do vláken (knihovna "pthread").
+
+
+
+Polymorfismus:
+
+              Základním prvkem ve hře jsou "Itemy", které hráč může získávat z herního světa (těžbou, či sběrem), nebo výrobou z jiných materiálů.
+              Lze vyrábět také nástroje, které slouží k vylepšení vlastností hráče (větší poškození), nebo získat jídlo, které může zvýšit, či snížit zdraví hráče.
+              Polymorfismus zde příjde vhod zejména při použití daného itemu (metoda useItem), která se v závislosti na itemu liší
+              (u jídla doplnuje/snižuje zdraví hráče, u toolu ničí bloky/zranuje moby v určitém směru od hráče, u blocku slouží k
+              položení daného bloku do herního světa).
+
+              Item -> Food - Jídlo, načítané z konfiguračního souboru - slouží k doplnování zdraví hráče
+                   \-> Tool - Nástroje načítané ze souboru
+                    \       \ - Player hand (Defaultní nástroj, atributy jsou načítány ze souboru)
+                     \-> Block - základní bloky načítané z config souboru - Jednotka herního světa, obsahující i tzv. "dropy", tedy jiné itemy, které hráč získá rozbitím bloku
+                               \ - Bedrock (nezničitelný materiál)
+                                \ - Air ("null" material, neobsahující nic)
+
+              V herním světě se rovněž vyskytují entity , které se po světě pohybují náhodně, mohou však s hráčem interagovat.
+              Po jejich zabití hráč může získat itemy do inventáře. Obnoží entity je rovněž samotný hráč. Díky této konstrukci je možné
+              toreticky hru modifikovat pro přítomnost více hráčů. Polymorfismus se zde hodí, jelikož mobové i hráči mají
+              mnoho atributtů společných, například zdraví (s ním související poškození ), možnost pohybovat se po herním světě
+              (u hráče řešeno přímým vstupem z klávesnice, u mobů samovolným pohybem do náhodného směru a vzdálenosti) a další.
+
+              Entity -> Player - Entita samotného hráče
+                     \-> Mob -> PassiveMob - Pasivni, neagresivní mob. Na hráče neútočí, ani s ním nijak neinteraguje, ovšem po prvním zásahu se pokusí utéct z perimetru hráče
+                              \-> AgressiveMob - Mob, jenž začne na hráče útočit, jakmile se přiblíží do jeho perimetru (přesná vzdálenost je definována v konfiguračním souboru)
+
+
+              Pro jednodušší vykreslování herního světa a různorodých informací slouží Třída Screen a z ní odvozené další třídy. Společným prvkem všech tříd jsou zejména
+              stejnorodé akce (ukonceni obrazovky, vykreslování), pričemž ale chování je pokaždé jiné (polymorfní metoda printContent). Každá obrazovka si pak definuje
+              vlastní soubor akcí nad rámec společných
+
+
+              Screen -> Game - Hlavni obrazovka hry
+                    \-> RelativeView -> GameView - zobrazuje herní svět, běží v samostatném vlákně
+                                     \-> TextView - Zobrazuje text
+                                      \-> Button -> Políčko s napojenou příslušející akcí. Jeho ohraničení se změní, pokud je aktivní
+
+
